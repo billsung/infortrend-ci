@@ -85,6 +85,30 @@ function pre_test_hook {
     iniset $TEMPEST_CONFIG validation ip_version_for_ssh 4
     iniset $TEMPEST_CONFIG validation ssh_timeout $BUILD_TIMEOUT
     iniset $TEMPEST_CONFIG validation network_for_ssh ${PRIVATE_NETWORK_NAME:-"private"}
+    iniset $TEMPEST_CONFIG identity uri http://127.0.0.1:5000/v2.0/
+    iniset $TEMPEST_CONFIG identity uri_v3 http://127.0.0.1:5000/v3/
+
+    iniset $TEMPEST_CONFIG compute-feature-enabled attach_encrypted_volume false
+    iniset $TEMPEST_CONFIG cli enabled True
+    iniset $TEMPEST_CONFIG service_available manila True
+    iniset $TEMPEST_CONFIG share capability_snapshot_support False
+    iniset $TEMPEST_CONFIG share backend_names ift-manila-1,ift-manila-2
+    iniset $TEMPEST_CONFIG share multitenancy_enabled False
+    iniset $TEMPEST_CONFIG share enable_protocols nfs,cifs
+    iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols nfs
+    iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols cifs
+    iniset $TEMPEST_CONFIG share username_for_user_rules tempest
+    iniset $TEMPEST_CONFIG share run_quota_tests True
+    iniset $TEMPEST_CONFIG share run_extend_tests True
+    iniset $TEMPEST_CONFIG share run_shrink_tests True
+    iniset $TEMPEST_CONFIG share run_snapshot_tests False
+    iniset $TEMPEST_CONFIG share run_consistency_group_tests False
+    iniset $TEMPEST_CONFIG share run_replication_tests False
+    iniset $TEMPEST_CONFIG share run_migration_tests True
+    iniset $TEMPEST_CONFIG share run_manage_unmanage_tests True
+    iniset $TEMPEST_CONFIG share run_manage_unmanage_snapshot_tests False
+
+    sudo chmod 777 $TEMPEST_CONFIG
 
     cat <<EOF >$BASE/new/devstack/local.conf
 [[local|localrc]]
@@ -93,32 +117,6 @@ GIT_BASE=http://git.openstack.org
 # Enable Manila
 enable_plugin manila https://github.com/openstack/manila
 MANILA_ENABLED_BACKENDS=ift-manila-1,ift-manila-2
-
-[[test-config|\$TEMPEST_CONFIG]]
-[compute-feature-enabled]
-attach_encrypted_volume=false
-[cli]
-enabled=True
-[service_available]
-manila=True
-[share]
-capability_snapshot_support=False
-backend_names=ift-manila-1,ift-manila-2
-multitenancy_enabled=False
-enable_protocols=nfs,cifs
-enable_ip_rules_for_protocols=nfs
-enable_user_rules_for_protocols=cifs
-username_for_user_rules=tempest
-run_quota_tests=True
-run_extend_tests=True
-run_shrink_tests=True
-run_snapshot_tests=False
-run_consistency_group_tests=False
-run_replication_tests=False
-run_migration_tests=True
-run_manage_unmanage_tests=True
-run_manage_unmanage_snapshot_tests=False
-
 EOF
 
 }
