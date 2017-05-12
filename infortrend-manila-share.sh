@@ -46,6 +46,9 @@ function pre_test_hook {
 
     sed -i 's/rm\ -f\ $MANILA_CONF//g' /opt/stack/new/manila/devstack/plugin.sh
 
+    export MANILA_CONF=/etc/manila/manila.conf
+    rm -f $MANILA_CONF
+
     iniset $MANILA_CONF ift-manila-1 share_backend_name ift-manila-1
     iniset $MANILA_CONF ift-manila-1 share_driver manila.share.drivers.infortrend.driver.InfortrendNASDriver
     iniset $MANILA_CONF ift-manila-1 driver_handles_share_servers False
@@ -64,6 +67,8 @@ function pre_test_hook {
     iniset $MANILA_CONF ift-manila-2 infortrend_share_pools InfortrendShare-2
     iniset $MANILA_CONF ift-manila-2 infortrend_share_channels 0,1
 
+    sudo chmod 777 $MANILA_CONF
+
     #source $BASE/new/devstack/openrc admin demo
     #manila type-key default set driver_handles_share_servers=False
 
@@ -74,29 +79,6 @@ GIT_BASE=http://git.openstack.org
 # Enable Manila
 enable_plugin manila https://github.com/openstack/manila
 MANILA_ENABLED_BACKENDS=ift-manila-1,ift-manila-2
-
-[[post-config|\$MANILA_CONF]]
-[DEFAULT]
-enabled_share_backends=ift-manila-1,ift-manila-2
-enabled_share_protocols=NFS,CIFS
-[ift-manila-1]
-share_backend_name=ift-manila-1
-share_driver=manila.share.drivers.infortrend.driver.InfortrendNASDriver
-driver_handles_share_servers=False
-infortrend_nas_ip=172.27.114.66
-infortrend_nas_user=manila
-infortrend_nas_password=qwer1234
-infortrend_share_pools=InfortrendShare-1
-infortrend_share_channels = 0,1
-[ift-manila-2]
-share_backend_name=ift-manila-2
-share_driver = manila.share.drivers.infortrend.driver.InfortrendNASDriver
-driver_handles_share_servers=False
-infortrend_nas_ip=172.27.114.66
-infortrend_nas_user=manila
-infortrend_nas_password=qwer1234
-infortrend_share_pools=InfortrendShare-2
-infortrend_share_channels=0,1
 
 [[test-config|\$TEMPEST_CONFIG]]
 [compute-feature-enabled]
