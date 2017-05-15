@@ -5,12 +5,14 @@ export MANILA_REPO=https://github.com/infortrend-openstack/infortrend-manila-dri
 export MANILA_DRIVER_DIR=/home/jenkins/infortrend-manila-driver
 export MANILA_REPO_BRANCH=chengwei
 
+export $USERNAME_FOR_USER_RULES tempest
+
 export GIT_BASE=${GIT_BASE:-https://git.openstack.org}
 export PYTHONUNBUFFERED=true
 export BUILD_TIMEOUT=21600000
 
 export DEVSTACK_GATE_TEMPEST=1
-# This can set to skip tempest started by devstack-vm-gate.
+# This can set to skip tempest test which will start automatically.
 #export DEVSTACK_GATE_TEMPEST_NOTESTS=1
 export DEVSTACK_GATE_TEMPEST_ALL_PLUGINS=1
 export TEMPEST_CONCURRENCY=1
@@ -44,31 +46,6 @@ function pre_test_hook {
         cd $temp_dir
     fi
 
-    sed -i 's/rm\ -f\ $MANILA_CONF//g' /opt/stack/new/manila/devstack/plugin.sh
-
-    export MANILA_CONF=/etc/manila/manila.conf
-    rm -f $MANILA_CONF
-
-    iniset $MANILA_CONF ift-manila-1 share_backend_name ift-manila-1
-    iniset $MANILA_CONF ift-manila-1 share_driver manila.share.drivers.infortrend.driver.InfortrendNASDriver
-    iniset $MANILA_CONF ift-manila-1 driver_handles_share_servers False
-    iniset $MANILA_CONF ift-manila-1 infortrend_nas_ip 172.27.114.66
-    iniset $MANILA_CONF ift-manila-1 infortrend_nas_user manila
-    iniset $MANILA_CONF ift-manila-1 infortrend_nas_password qwer1234
-    iniset $MANILA_CONF ift-manila-1 infortrend_share_pools InfortrendShare-1
-    iniset $MANILA_CONF ift-manila-1 infortrend_share_channels 0,1
-
-    iniset $MANILA_CONF ift-manila-2 share_backend_name ift-manila-2
-    iniset $MANILA_CONF ift-manila-2 share_driver manila.share.drivers.infortrend.driver.InfortrendNASDriver
-    iniset $MANILA_CONF ift-manila-2 driver_handles_share_servers False
-    iniset $MANILA_CONF ift-manila-2 infortrend_nas_ip 172.27.114.66
-    iniset $MANILA_CONF ift-manila-2 infortrend_nas_user manila
-    iniset $MANILA_CONF ift-manila-2 infortrend_nas_password qwer1234
-    iniset $MANILA_CONF ift-manila-2 infortrend_share_pools InfortrendShare-2
-    iniset $MANILA_CONF ift-manila-2 infortrend_share_channels 0,1
-
-    sudo chmod 777 $MANILA_CONF
-
     TEMPEST_CONFIG=$BASE/new/tempest/etc/tempest.conf
     ADMIN_TENANT_NAME=${ADMIN_TENANT_NAME:-"admin"}
     ADMIN_PASSWORD=${ADMIN_PASSWORD:-"secretadmin"}
@@ -88,20 +65,23 @@ function pre_test_hook {
     iniset $TEMPEST_CONFIG identity uri http://127.0.0.1:5000/v2.0/
     iniset $TEMPEST_CONFIG identity uri_v3 http://127.0.0.1:5000/v3/
 
-    iniset $TEMPEST_CONFIG compute-feature-enabled attach_encrypted_volume false
     iniset $TEMPEST_CONFIG cli enabled True
     iniset $TEMPEST_CONFIG service_available manila True
-    iniset $TEMPEST_CONFIG share capability_snapshot_support False
     iniset $TEMPEST_CONFIG share backend_names ift-manila-1,ift-manila-2
-    iniset $TEMPEST_CONFIG share multitenancy_enabled False
-    iniset $TEMPEST_CONFIG share enable_protocols nfs,cifs
+    iniset $TEMPEST_CONFIG share share_creation_retry_number 2
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols nfs
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols cifs
-    iniset $TEMPEST_CONFIG share username_for_user_rules tempest
+    iniset $TEMPEST_CONFIG share default_share_type_name ${MANILA_DEFAULT_SHARE_TYPE:-default}
+    iniset $TEMPEST_CONFIG share capability_snapshot_support False
+    iniset $TEMPEST_CONFIG share multitenancy_enabled False
+    iniset $TEMPEST_CONFIG share enable_protocols nfs,cifs
+    iniset $TEMPEST_CONFIG share username_for_user_rules $USERNAME_FOR_USER_RULES
+    iniset $TEMPEST_CONFIG share multi_backend True
     iniset $TEMPEST_CONFIG share run_quota_tests True
     iniset $TEMPEST_CONFIG share run_extend_tests True
     iniset $TEMPEST_CONFIG share run_shrink_tests True
     iniset $TEMPEST_CONFIG share run_snapshot_tests False
+    iniset $TEMPEST_CONFIG share run_mount_snapshot_tests False
     iniset $TEMPEST_CONFIG share run_consistency_group_tests False
     iniset $TEMPEST_CONFIG share run_replication_tests False
     iniset $TEMPEST_CONFIG share run_migration_tests True
@@ -109,6 +89,39 @@ function pre_test_hook {
     iniset $TEMPEST_CONFIG share run_manage_unmanage_snapshot_tests False
 
     sudo chmod 777 $TEMPEST_CONFIG
+
+    sed -i 's/rm\ -f\ $MANILA_CONF//g' /opt/stack/new/manila/devstack/plugin.sh
+    rm -f $MANILA_CONF
+    export MANILA_CONF=/etc/manila/manila.conf
+    iniset $MANILA_CONF ift-manila-1 share_backend_name ift-manila-1
+    iniset $MANILA_CONF ift-manila-1 share_driver manila.share.drivers.infortrend.driver.InfortrendNASDriver
+    iniset $MANILA_CONF ift-manila-1 driver_handles_share_servers False
+    iniset $MANILA_CONF ift-manila-1 infortrend_nas_ip 172.27.114.66
+    iniset $MANILA_CONF ift-manila-1 infortrend_nas_user manila
+    iniset $MANILA_CONF ift-manila-1 infortrend_nas_password qwer1234
+    iniset $MANILA_CONF ift-manila-1 infortrend_share_pools InfortrendShare-1
+    iniset $MANILA_CONF ift-manila-1 infortrend_share_channels 0,1
+    iniset $MANILA_CONF ift-manila-2 share_backend_name ift-manila-2
+    iniset $MANILA_CONF ift-manila-2 share_driver manila.share.drivers.infortrend.driver.InfortrendNASDriver
+    iniset $MANILA_CONF ift-manila-2 driver_handles_share_servers False
+    iniset $MANILA_CONF ift-manila-2 infortrend_nas_ip 172.27.114.66
+    iniset $MANILA_CONF ift-manila-2 infortrend_nas_user manila
+    iniset $MANILA_CONF ift-manila-2 infortrend_nas_password qwer1234
+    iniset $MANILA_CONF ift-manila-2 infortrend_share_pools InfortrendShare-2
+    iniset $MANILA_CONF ift-manila-2 infortrend_share_channels 0,1
+
+    sudo chmod 777 $MANILA_CONF
+
+    if ! grep $USERNAME_FOR_USER_RULES "/etc/passwd"; then
+        sudo useradd $USERNAME_FOR_USER_RULES
+    fi
+
+    set +o errexit
+    cd $BASE/new/tempest
+
+    ADMIN_DOMAIN_NAME=${ADMIN_DOMAIN_NAME:-"Default"}
+    export OS_PROJECT_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
+    export OS_USER_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
 
     cat <<EOF >$BASE/new/devstack/local.conf
 [[local|localrc]]
