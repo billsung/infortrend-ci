@@ -5,22 +5,15 @@ export MANILA_REPO=https://github.com/infortrend-openstack/infortrend-manila-dri
 export MANILA_DRIVER_DIR=/home/jenkins/infortrend-manila-driver
 export MANILA_REPO_BRANCH=chengwei
 
-export $USERNAME_FOR_USER_RULES tempest
-
 export GIT_BASE=${GIT_BASE:-https://git.openstack.org}
 export PYTHONUNBUFFERED=true
 export BUILD_TIMEOUT=21600000
 
-export DEVSTACK_GATE_TEMPEST=1
-# This can set to skip tempest test which will start automatically.
-#export DEVSTACK_GATE_TEMPEST_NOTESTS=1
+export DEVSTACK_GATE_TEMPEST=0
 export DEVSTACK_GATE_TEMPEST_ALL_PLUGINS=1
 export TEMPEST_CONCURRENCY=1
 export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=manila_tempest_tests.tests.api.*)'
-export OVERRIDE_ENABLED_SERVICES=dstat,g-api,g-reg,horizon,key,mysql,n-api,n-cauth,n-cond,n-cpu,n-novnc,n-obj,n-sch,peakmem_tracker,placement-api,neurton,q-agt,q-dhcp,q-l3,q-meta,q-metering,q-svc,rabbit
-
-export PROJECTS="openstack/manila $PROJECTS"
-export PROJECTS="openstack/python-manilaclient $PROJECTS"
+export OVERRIDE_ENABLED_SERVICES=dstat,g-api,g-reg,horizon,key,mysql,n-api,n-cauth,n-cond,n-cpu,n-novnc,n-obj,n-sch,peakmem_tracker,placement-api,q-agt,q-dhcp,q-l3,q-meta,q-metering,q-svc,rabbit,tempest
 
 if [ -z "$ZUUL_PROJECT" ]; then
     export ZUUL_PROJECT=openstack/manila
@@ -28,6 +21,62 @@ fi
 if [ -z "$ZUUL_BRANCH" ]; then
     export ZUUL_BRANCH=master
 fi
+
+export 'DEVSTACK_LOCAL_CONFIG=[[local|localrc]]
+# DEST=/opt/stack/new
+GIT_BASE=http://git.openstack.org
+disable_service horizon
+MANILA_ENABLED_BACKENDS=ift-manila-1,ift-manila-2
+MANILA_SERVICE_IMAGE_ENABLED=False
+
+# Enable Manila
+enable_plugin manila https://github.com/openstack/manila
+
+[[test-config|$TEMPEST_CONFIG]]
+[cli]
+enabled=True
+[service_available]
+manila=True
+[share]
+backend_names=ift-manila-1,ift-manila-2
+share_creation_retry_number=2
+enable_ip_rules_for_protocols=nfs
+enable_user_rules_for_protocols=cifs
+multitenancy_enabled=False
+enable_protocols=nfs,cifs
+username_for_user_rules=tempest
+multi_backend=True
+run_quota_tests=True
+run_extend_tests=True
+run_shrink_tests=True
+run_snapshot_tests=False
+run_mount_snapshot_tests=False
+run_consistency_group_tests=False
+run_replication_tests=False
+run_migration_tests=True
+run_manage_unmanage_tests=True
+run_manage_unmanage_snapshot_tests=False
+
+[[post-config|$MANILA_CONF]]
+[ift-manila-1]
+share_backend_name=ift-manila-1
+share_driver=manila.share.drivers.infortrend.driver.InfortrendNASDriver
+driver_handles_share_servers=False
+infortrend_nas_ip=172.27.114.66
+infortrend_nas_user=manila
+infortrend_nas_password=qwer1234
+infortrend_share_pools=InfortrendShare-1
+infortrend_share_channels=0
+[ift-manila-2]
+share_backend_name=ift-manila-2
+share_driver=manila.share.drivers.infortrend.driver.InfortrendNASDriver
+driver_handles_share_servers=False
+infortrend_nas_ip=172.27.114.66
+infortrend_nas_user=manila
+infortrend_nas_password=qwer1234
+infortrend_share_pools=InfortrendShare-2
+infortrend_share_channels=1
+'
 
 function pre_test_hook {
 
@@ -46,95 +95,25 @@ function pre_test_hook {
         cd $temp_dir
     fi
 
-    TEMPEST_CONFIG=$BASE/new/tempest/etc/tempest.conf
-    ADMIN_TENANT_NAME=${ADMIN_TENANT_NAME:-"admin"}
-    ADMIN_PASSWORD=${ADMIN_PASSWORD:-"secretadmin"}
-    iniset $TEMPEST_CONFIG auth admin_username ${ADMIN_USERNAME:-"admin"}
-    iniset $TEMPEST_CONFIG auth admin_password $ADMIN_PASSWORD
-    iniset $TEMPEST_CONFIG auth admin_tenant_name $ADMIN_TENANT_NAME
-    iniset $TEMPEST_CONFIG auth admin_domain_name ${ADMIN_DOMAIN_NAME:-"Default"}
-    iniset $TEMPEST_CONFIG identity username ${TEMPEST_USERNAME:-"demo"}
-    iniset $TEMPEST_CONFIG identity password $ADMIN_PASSWORD
-    iniset $TEMPEST_CONFIG identity tenant_name ${TEMPEST_TENANT_NAME:-"demo"}
-    iniset $TEMPEST_CONFIG identity alt_username ${ALT_USERNAME:-"alt_demo"}
-    iniset $TEMPEST_CONFIG identity alt_password $ADMIN_PASSWORD
-    iniset $TEMPEST_CONFIG identity alt_tenant_name ${ALT_TENANT_NAME:-"alt_demo"}
-    iniset $TEMPEST_CONFIG validation ip_version_for_ssh 4
-    iniset $TEMPEST_CONFIG validation ssh_timeout $BUILD_TIMEOUT
-    iniset $TEMPEST_CONFIG validation network_for_ssh ${PRIVATE_NETWORK_NAME:-"private"}
-    iniset $TEMPEST_CONFIG identity uri http://127.0.0.1:5000/v2.0/
-    iniset $TEMPEST_CONFIG identity uri_v3 http://127.0.0.1:5000/v3/
-
-    iniset $TEMPEST_CONFIG cli enabled True
-    iniset $TEMPEST_CONFIG service_available manila True
-    iniset $TEMPEST_CONFIG share backend_names ift-manila-1,ift-manila-2
-    iniset $TEMPEST_CONFIG share share_creation_retry_number 2
-    iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols nfs
-    iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols cifs
-    iniset $TEMPEST_CONFIG share default_share_type_name ${MANILA_DEFAULT_SHARE_TYPE:-default}
-    iniset $TEMPEST_CONFIG share capability_snapshot_support False
-    iniset $TEMPEST_CONFIG share multitenancy_enabled False
-    iniset $TEMPEST_CONFIG share enable_protocols nfs,cifs
-    iniset $TEMPEST_CONFIG share username_for_user_rules $USERNAME_FOR_USER_RULES
-    iniset $TEMPEST_CONFIG share multi_backend True
-    iniset $TEMPEST_CONFIG share run_quota_tests True
-    iniset $TEMPEST_CONFIG share run_extend_tests True
-    iniset $TEMPEST_CONFIG share run_shrink_tests True
-    iniset $TEMPEST_CONFIG share run_snapshot_tests False
-    iniset $TEMPEST_CONFIG share run_mount_snapshot_tests False
-    iniset $TEMPEST_CONFIG share run_consistency_group_tests False
-    iniset $TEMPEST_CONFIG share run_replication_tests False
-    iniset $TEMPEST_CONFIG share run_migration_tests True
-    iniset $TEMPEST_CONFIG share run_manage_unmanage_tests True
-    iniset $TEMPEST_CONFIG share run_manage_unmanage_snapshot_tests False
-
-    sudo chmod 777 $TEMPEST_CONFIG
-
-    sed -i 's/rm\ -f\ $MANILA_CONF//g' /opt/stack/new/manila/devstack/plugin.sh
-    rm -f $MANILA_CONF
-    export MANILA_CONF=/etc/manila/manila.conf
-    iniset $MANILA_CONF ift-manila-1 share_backend_name ift-manila-1
-    iniset $MANILA_CONF ift-manila-1 share_driver manila.share.drivers.infortrend.driver.InfortrendNASDriver
-    iniset $MANILA_CONF ift-manila-1 driver_handles_share_servers False
-    iniset $MANILA_CONF ift-manila-1 infortrend_nas_ip 172.27.114.66
-    iniset $MANILA_CONF ift-manila-1 infortrend_nas_user manila
-    iniset $MANILA_CONF ift-manila-1 infortrend_nas_password qwer1234
-    iniset $MANILA_CONF ift-manila-1 infortrend_share_pools InfortrendShare-1
-    iniset $MANILA_CONF ift-manila-1 infortrend_share_channels 0,1
-    iniset $MANILA_CONF ift-manila-2 share_backend_name ift-manila-2
-    iniset $MANILA_CONF ift-manila-2 share_driver manila.share.drivers.infortrend.driver.InfortrendNASDriver
-    iniset $MANILA_CONF ift-manila-2 driver_handles_share_servers False
-    iniset $MANILA_CONF ift-manila-2 infortrend_nas_ip 172.27.114.66
-    iniset $MANILA_CONF ift-manila-2 infortrend_nas_user manila
-    iniset $MANILA_CONF ift-manila-2 infortrend_nas_password qwer1234
-    iniset $MANILA_CONF ift-manila-2 infortrend_share_pools InfortrendShare-2
-    iniset $MANILA_CONF ift-manila-2 infortrend_share_channels 0,1
-
-    sudo chmod 777 $MANILA_CONF
-
-    if ! grep $USERNAME_FOR_USER_RULES "/etc/passwd"; then
-        sudo useradd $USERNAME_FOR_USER_RULES
+    if ! grep tempest "/etc/passwd"; then
+        sudo useradd tempest
     fi
 
     set +o errexit
     cd $BASE/new/tempest
+}
 
-    ADMIN_DOMAIN_NAME=${ADMIN_DOMAIN_NAME:-"Default"}
-    export OS_PROJECT_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
-    export OS_USER_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
-
-    cat <<EOF >$BASE/new/devstack/local.conf
-[[local|localrc]]
-DEST=/opt/stack/new
-GIT_BASE=http://git.openstack.org
-# Enable Manila
-enable_plugin manila https://github.com/openstack/manila
-MANILA_ENABLED_BACKENDS=ift-manila-1,ift-manila-2
-EOF
-
+function post_test_hook {
+    set +o errexit
+    cd $BASE/new/tempest
+    sudo chown -R tempest:stack $BASE/new/tempest
+    sudo chown -R tempest:stack $BASE/data/tempest
+    sudo chmod -R o+rx $BASE/new/devstack/files
+    sudo -H -u tempest tox -eall-plugin -- $DEVSTACK_GATE_TEMPEST_REGEX --concurrency=$TEMPEST_CONCURRENCY
 }
 
 export -f pre_test_hook
+export -f post_test_hook
 
 export KEEP_LOCALRC=true
 
