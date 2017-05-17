@@ -87,6 +87,17 @@ function pre_test_hook {
         mkdir ${BASE}/new/manila/manila/share/drivers/infortrend
         cp ${MANILA_DRIVER_DIR}/infortrend/* ${BASE}/new/manila/manila/share/drivers/infortrend/
     fi
+    # Temperary method adding opts.py and exception.py
+    sed -i '71 iimport manila.share.drivers.infortrend.driver' ${BASE}/new/manila/manila/opts.py
+    sed -i '143 amanila.share.drivers.infortrend.driver.infortrend_nas_opts,' ${BASE}/new/manila/manila/opts.py
+    echo '# Infortrend Storage driver
+class InfortrendCLIException(ShareBackendException):
+    message = _("Infortrend CLI exception: %(err)s "
+                "Return Code: %(rc)s, Output: %(out)s")
+
+class InfortrendNASException(ShareBackendException):
+    message = _("Infortrend NAS exception: %(err)s")
+' >> ${BASE}/new/manila/manila/exception.py
 
     if [ -n "$ZUUL_REF" ]; then
         temp_dir=$PWD
