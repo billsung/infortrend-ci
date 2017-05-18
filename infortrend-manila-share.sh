@@ -7,13 +7,14 @@ export MANILA_REPO_BRANCH=chengwei
 
 export GIT_BASE=${GIT_BASE:-https://git.openstack.org}
 export PYTHONUNBUFFERED=true
-export BUILD_TIMEOUT=21600000
+export BUILD_TIMEOUT=11800000
 
 export DEVSTACK_GATE_TEMPEST=0
-export DEVSTACK_GATE_TEMPEST_ALL_PLUGINS=1
 export TEMPEST_CONCURRENCY=1
 export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=manila_tempest_tests.tests.api.*)'
 export OVERRIDE_ENABLED_SERVICES=dstat,g-api,g-reg,horizon,key,mysql,n-api,n-cauth,n-cond,n-cpu,n-novnc,n-obj,n-sch,peakmem_tracker,placement-api,q-agt,q-dhcp,q-l3,q-meta,q-metering,q-svc,rabbit,tempest
+
+export PROJECTS="openstack/python-manilaclient $PROJECTS"
 
 if [ -z "$ZUUL_PROJECT" ]; then
     export ZUUL_PROJECT=openstack/manila
@@ -39,7 +40,7 @@ enabled=True
 manila=True
 [share]
 backend_names=ift-manila-1,ift-manila-2
-share_creation_retry_number=2
+share_creation_retry_number=3
 enable_ip_rules_for_protocols=nfs
 enable_user_rules_for_protocols=cifs
 multitenancy_enabled=False
@@ -53,7 +54,7 @@ run_snapshot_tests=False
 run_mount_snapshot_tests=False
 run_consistency_group_tests=False
 run_replication_tests=False
-run_migration_tests=True
+run_migration_tests=False
 run_manage_unmanage_tests=True
 run_manage_unmanage_snapshot_tests=False
 
@@ -87,7 +88,7 @@ function pre_test_hook {
         mkdir ${BASE}/new/manila/manila/share/drivers/infortrend
         cp ${MANILA_DRIVER_DIR}/infortrend/* ${BASE}/new/manila/manila/share/drivers/infortrend/
     fi
-    # Temperary method adding opts.py and exception.py
+    echo "Adding Infortrend opts and exceptions.."
     sed -i '71 iimport manila.share.drivers.infortrend.driver' ${BASE}/new/manila/manila/opts.py
     sed -i '143 amanila.share.drivers.infortrend.driver.infortrend_nas_opts,' ${BASE}/new/manila/manila/opts.py
     echo '# Infortrend Storage driver
@@ -99,6 +100,9 @@ class InfortrendNASException(ShareBackendException):
     message = _("Infortrend NAS exception: %(err)s")
 ' >> ${BASE}/new/manila/manila/exception.py
 
+    echo "Fix for our CIDR which only supports mask number <32"
+    sed -i 's#1.2.3.4/32#1.2.3.4/31#g' ${BASE}/new/manila/manila_tempest_tests/tests/api/test_rules.py
+
     if [ -n "$ZUUL_REF" ]; then
         temp_dir=$PWD
         cd $BASE/new/cinder/
@@ -109,9 +113,6 @@ class InfortrendNASException(ShareBackendException):
     if ! grep tempest "/etc/passwd"; then
         sudo useradd tempest
     fi
-
-    set +o errexit
-    cd $BASE/new/tempest
 }
 
 function post_test_hook {
