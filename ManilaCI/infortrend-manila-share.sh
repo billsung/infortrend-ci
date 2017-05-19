@@ -3,15 +3,15 @@
 export CLONE_DRIVER_FROM_GIT=1
 export MANILA_REPO=https://github.com/infortrend-openstack/infortrend-manila-driver.git
 export MANILA_DRIVER_DIR=/home/jenkins/infortrend-manila-driver
-export MANILA_REPO_BRANCH=chengwei
+export MANILA_REPO_BRANCH=master
 
 export GIT_BASE=${GIT_BASE:-https://git.openstack.org}
 export PYTHONUNBUFFERED=true
-export BUILD_TIMEOUT=11800000
+export BUILD_TIMEOUT=10800000
 
 export DEVSTACK_GATE_TEMPEST=0
-export TEMPEST_CONCURRENCY=1
-export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=manila_tempest_tests.tests.api.*)'
+export TEMPEST_CONCURRENCY=2
+export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=manila_tempest_tests.tests.api)(?!.*admin.test_migration)(?!.*admin.test_snapshot_manage)(?!.*test_shares.SharesCIFSTest.test_create_share_from_snapshot)(?!.*test_shares.SharesNFSTest.test_create_share_from_snapshot).*'
 export OVERRIDE_ENABLED_SERVICES=dstat,g-api,g-reg,horizon,key,mysql,n-api,n-cauth,n-cond,n-cpu,n-novnc,n-obj,n-sch,peakmem_tracker,placement-api,q-agt,q-dhcp,q-l3,q-meta,q-metering,q-svc,rabbit,tempest
 
 export PROJECTS="openstack/python-manilaclient $PROJECTS"
@@ -23,10 +23,12 @@ if [ -z "$ZUUL_BRANCH" ]; then
     export ZUUL_BRANCH=master
 fi
 
+# Fix for "Failure creating NET_ID"
+rm -rf /etc/neutron/*
+
 export 'DEVSTACK_LOCAL_CONFIG=[[local|localrc]]
 # DEST=/opt/stack/new
 GIT_BASE=http://git.openstack.org
-disable_service horizon
 MANILA_ENABLED_BACKENDS=ift-manila-1,ift-manila-2
 MANILA_SERVICE_IMAGE_ENABLED=False
 
@@ -105,7 +107,7 @@ class InfortrendNASException(ShareBackendException):
 
     if [ -n "$ZUUL_REF" ]; then
         temp_dir=$PWD
-        cd $BASE/new/cinder/
+        cd $BASE/new/manila/
         sudo git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF
         cd $temp_dir
     fi
@@ -135,7 +137,6 @@ cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
 sed -i 's#exit_handler $RETVAL# \
 sudo mv $BASE/logs/* $WORKSPACE/logs \
 sudo rm $PWD/logs/libvirt/libvirtd.log* \
-sudo rm -rf $BASE/new/* \
 exit_handler $RETVAL#g' safe-devstack-vm-gate-wrap.sh
 
 sed -i 's,^\(\s*\)\(/tmp/ansible/bin/ara .*\)$,\1#(sam) remove ARA report because it is both time and space consuming\n\1#\2,g' safe-devstack-vm-gate-wrap.sh
