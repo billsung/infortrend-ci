@@ -1,19 +1,21 @@
 #!/bin/bash -xe
 
+# IFT Manlia Driver REPO
 export CLONE_DRIVER_FROM_GIT=1
 export MANILA_REPO=https://github.com/infortrend-openstack/infortrend-manila-driver.git
 export MANILA_DRIVER_DIR=/home/jenkins/infortrend-manila-driver
 export MANILA_REPO_BRANCH=master
 
 export GIT_BASE=${GIT_BASE:-https://git.openstack.org}
+export GIT_BRANCH=${GIT_BRANCH:-master}
 export PYTHONUNBUFFERED=true
 export BUILD_TIMEOUT=10800000
 
 export DEVSTACK_GATE_TEMPEST=0
-export TEMPEST_CONCURRENCY=2
+export TEMPEST_CONCURRENCY=1    # Using #>1 will fail in some cases. (RAID has no parallel)
 export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=manila_tempest_tests.tests.api)(?!.*admin.test_migration)(?!.*admin.test_snapshot_manage)(?!.*test_shares.SharesCIFSTest.test_create_share_from_snapshot)(?!.*test_shares.SharesNFSTest.test_create_share_from_snapshot).*'
-export OVERRIDE_ENABLED_SERVICES=dstat,g-api,g-reg,horizon,key,mysql,n-api,n-cauth,n-cond,n-cpu,n-novnc,n-obj,n-sch,peakmem_tracker,placement-api,q-agt,q-dhcp,q-l3,q-meta,q-metering,q-svc,rabbit,tempest
 
+export OVERRIDE_ENABLED_SERVICES=dstat,g-api,g-reg,horizon,key,mysql,n-api,n-cauth,n-cond,n-cpu,n-novnc,n-obj,n-sch,peakmem_tracker,placement-api,q-agt,q-dhcp,q-l3,q-meta,q-metering,q-svc,rabbit,tempest
 export PROJECTS="openstack/python-manilaclient $PROJECTS"
 
 if [ -z "$ZUUL_PROJECT" ]; then
@@ -24,7 +26,7 @@ if [ -z "$ZUUL_BRANCH" ]; then
 fi
 
 # Fix for "Failure creating NET_ID"
-rm -rf /etc/neutron/*
+sudo rm -rf /etc/neutron/*
 
 export 'DEVSTACK_LOCAL_CONFIG=[[local|localrc]]
 # DEST=/opt/stack/new

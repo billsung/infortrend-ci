@@ -16,7 +16,9 @@ openstack/requirements openstack/swift openstack/tempest openstack/tempest-lib
 openstack/tripleo-heat-templates openstack/tripleo-image-elements
 openstack/tripleo-incubator openstack/zaqar'
 
-find ${BASE}/ -maxdepth 1 -type f -delete
+# Delete previous logs
+find /opt/stack/new/ -maxdepth 1 -type f -delete
+find /opt/stack/new/ -maxdepth 1 -type l -delete
 
 home=$PWD
 for i in ${array[@]}; do
@@ -29,9 +31,23 @@ for i in ${array[@]}; do
         git clone https://git.openstack.org/${i}
     else
         cd ${BASE}/${j}
-        git reset --hard origin/master
+        git reset --hard
         git pull --all
         git remote prune origin
+        git checkout master
+        git clean -x -f
     fi
 done
 cd ${home}
+
+chown stack ${BASE}/*
+chown stack ${BASE}/.*
+
+mysql --user="root" --execute="DROP DATABASE cinder;"
+mysql --user="root" --execute="DROP DATABASE glance;"
+mysql --user="root" --execute="DROP DATABASE keystone;"
+mysql --user="root" --execute="DROP DATABASE manila;"
+mysql --user="root" --execute="DROP DATABASE neutron;"
+mysql --user="root" --execute="DROP DATABASE nova;"
+mysql --user="root" --execute="DROP DATABASE nova_api;"
+mysql --user="root" --execute="DROP DATABASE nova_cell0;"
