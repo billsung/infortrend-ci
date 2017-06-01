@@ -1,6 +1,6 @@
 #!/bin/bash -xe
 
-BASE='/opt/stack/new'
+BASE='/home/ift/ci_projects'
 array='openstack/ceilometer openstack/ceilometermiddleware openstack/cinder
 openstack-dev/devstack openstack/django_openstack_auth openstack/glance
 openstack/glance_store openstack/heat openstack/heat-cfntools
@@ -16,38 +16,33 @@ openstack/requirements openstack/swift openstack/tempest openstack/tempest-lib
 openstack/tripleo-heat-templates openstack/tripleo-image-elements
 openstack/tripleo-incubator openstack/zaqar'
 
-# Delete previous logs
-find /opt/stack/new/ -maxdepth 1 -type f -delete
-find /opt/stack/new/ -maxdepth 1 -type l -delete
-
-home=$PWD
 for i in ${array[@]}; do
-    echo ${i}
+
     j=$(echo ${i} | awk 'BEGIN {FS="/"}; {print $2}')
+    echo "Processing ${j}..."
 
     if [ ! -d ${BASE}/${j} ]; then
-        echo "1"
         cd ${BASE}
         git clone https://git.openstack.org/${i}
     else
         cd ${BASE}/${j}
+        git remote update
         git reset --hard
-        git pull --all
         git remote prune origin
-        git checkout master
         git clean -x -f
     fi
 done
-cd ${home}
 
-chown stack ${BASE}/*
-chown stack ${BASE}/.*
+function check_connection {
 
-mysql --user="root" --execute="DROP DATABASE cinder;"
-mysql --user="root" --execute="DROP DATABASE glance;"
-mysql --user="root" --execute="DROP DATABASE keystone;"
-mysql --user="root" --execute="DROP DATABASE manila;"
-mysql --user="root" --execute="DROP DATABASE neutron;"
-mysql --user="root" --execute="DROP DATABASE nova;"
-mysql --user="root" --execute="DROP DATABASE nova_api;"
-mysql --user="root" --execute="DROP DATABASE nova_cell0;"
+    until ping -q -c1 -w1 $1 > /dev/null
+    do
+        echo "Infortrend RAID not online yet, try again later.."
+        sleep 600 # wait raid ready
+    done
+}
+
+echo "Check Connections..."
+check_connection 11.11.11.11
+check_connection 11.11.11.13
+check_connection 172.27.114.66

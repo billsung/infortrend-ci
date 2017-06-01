@@ -18,15 +18,15 @@ export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=manila_tempest_tests.tests.api)(?!.*admi
 export OVERRIDE_ENABLED_SERVICES=dstat,g-api,g-reg,horizon,key,mysql,n-api,n-cauth,n-cond,n-cpu,n-novnc,n-obj,n-sch,peakmem_tracker,placement-api,q-agt,q-dhcp,q-l3,q-meta,q-metering,q-svc,rabbit,tempest
 export PROJECTS="openstack/python-manilaclient $PROJECTS"
 
+rm -rf /opt/stack/new/*
+cp -r /home/ift/ci_projects/* /opt/stack/new/
+
 if [ -z "$ZUUL_PROJECT" ]; then
     export ZUUL_PROJECT=openstack/manila
 fi
 if [ -z "$ZUUL_BRANCH" ]; then
     export ZUUL_BRANCH=master
 fi
-
-# Fix for "Failure creating NET_ID"
-sudo rm -rf /etc/neutron/*
 
 export 'DEVSTACK_LOCAL_CONFIG=[[local|localrc]]
 # DEST=/opt/stack/new
@@ -85,6 +85,13 @@ infortrend_share_channels=1
 
 function pre_test_hook {
 
+    if [ -n "$ZUUL_REF" ]; then
+        temp_dir=$PWD
+        cd $BASE/new/manila/
+        sudo git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF
+        cd $temp_dir
+    fi
+
     if [[ "$CLONE_DRIVER_FROM_GIT" == 1 ]]; then
         rm -rf ${MANILA_DRIVER_DIR}
         git clone ${MANILA_REPO} ${MANILA_DRIVER_DIR} -b ${MANILA_REPO_BRANCH}
@@ -106,13 +113,6 @@ class InfortrendNASException(ShareBackendException):
 
     echo "Fix for our CIDR which only supports mask number <32"
     sed -i 's#1.2.3.4/32#1.2.3.4/31#g' ${BASE}/new/manila/manila_tempest_tests/tests/api/test_rules.py
-
-    if [ -n "$ZUUL_REF" ]; then
-        temp_dir=$PWD
-        cd $BASE/new/manila/
-        sudo git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF
-        cd $temp_dir
-    fi
 
     if ! grep tempest "/etc/passwd"; then
         sudo useradd tempest
@@ -140,8 +140,6 @@ sed -i 's#exit_handler $RETVAL# \
 sudo mv $BASE/logs/* $WORKSPACE/logs \
 sudo rm $PWD/logs/libvirt/libvirtd.log* \
 exit_handler $RETVAL#g' safe-devstack-vm-gate-wrap.sh
-
-sed -i 's,^\(\s*\)\(/tmp/ansible/bin/ara .*\)$,\1#(sam) remove ARA report because it is both time and space consuming\n\1#\2,g' safe-devstack-vm-gate-wrap.sh
 
 #2017/04/05 fix bug for functions.sh line:521
 sed -i 's#    local cache_dir=$BASE/cache/files/#    local cache_dir=$BASE/cache/files/\
