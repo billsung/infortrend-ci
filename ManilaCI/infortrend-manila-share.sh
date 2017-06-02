@@ -18,9 +18,6 @@ export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=manila_tempest_tests.tests.api)(?!.*admi
 export OVERRIDE_ENABLED_SERVICES=dstat,g-api,g-reg,horizon,key,mysql,n-api,n-cauth,n-cond,n-cpu,n-novnc,n-obj,n-sch,peakmem_tracker,placement-api,q-agt,q-dhcp,q-l3,q-meta,q-metering,q-svc,rabbit,tempest
 export PROJECTS="openstack/python-manilaclient $PROJECTS"
 
-rm -rf /opt/stack/new/*
-cp -r /home/ift/ci_projects/* /opt/stack/new/
-
 if [ -z "$ZUUL_PROJECT" ]; then
     export ZUUL_PROJECT=openstack/manila
 fi
@@ -85,19 +82,13 @@ infortrend_share_channels=1
 
 function pre_test_hook {
 
-    if [ -n "$ZUUL_REF" ]; then
-        temp_dir=$PWD
-        cd $BASE/new/manila/
-        sudo git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF
-        cd $temp_dir
-    fi
-
     if [[ "$CLONE_DRIVER_FROM_GIT" == 1 ]]; then
         rm -rf ${MANILA_DRIVER_DIR}
         git clone ${MANILA_REPO} ${MANILA_DRIVER_DIR} -b ${MANILA_REPO_BRANCH}
-        rm -rf ${BASE}/new/manila/manila/share/drivers/infortrend/*
+        rm -rf ${BASE}/new/manila/manila/share/drivers/infortrend
         mkdir ${BASE}/new/manila/manila/share/drivers/infortrend
         cp ${MANILA_DRIVER_DIR}/infortrend/* ${BASE}/new/manila/manila/share/drivers/infortrend/
+        cd ${BASE}/new/manila
     fi
     echo "Adding Infortrend opts and exceptions.."
     sed -i '71 iimport manila.share.drivers.infortrend.driver' ${BASE}/new/manila/manila/opts.py
@@ -113,6 +104,13 @@ class InfortrendNASException(ShareBackendException):
 
     echo "Fix for our CIDR which only supports mask number <32"
     sed -i 's#1.2.3.4/32#1.2.3.4/31#g' ${BASE}/new/manila/manila_tempest_tests/tests/api/test_rules.py
+
+    if [ -n "$ZUUL_REF" ]; then
+        temp_dir=$PWD
+        cd $BASE/new/manila/
+        sudo git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF -X theirs
+        cd $temp_dir
+    fi
 
     if ! grep tempest "/etc/passwd"; then
         sudo useradd tempest
@@ -135,10 +133,13 @@ export KEEP_LOCALRC=true
 
 cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
 
+# Prevent Generating ARA report
+sed -i 's#/tmp/ansible/bin/ara generate html $WORKSPACE/logs/ara##g' safe-devstack-vm-gate-wrap.sh
+sed -i 's#gzip --recursive --best $WORKSPACE/logs/ara##g' safe-devstack-vm-gate-wrap.sh
+
 # in safe-devstack-vm-gate-wrap, move logs to jenkins workspace
 sed -i 's#exit_handler $RETVAL# \
 sudo mv $BASE/logs/* $WORKSPACE/logs \
-sudo rm $PWD/logs/libvirt/libvirtd.log* \
 exit_handler $RETVAL#g' safe-devstack-vm-gate-wrap.sh
 
 #2017/04/05 fix bug for functions.sh line:521
