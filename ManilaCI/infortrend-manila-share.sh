@@ -31,6 +31,14 @@ GIT_BASE=http://git.openstack.org
 MANILA_ENABLED_BACKENDS=ift-manila-1,ift-manila-2
 MANILA_SERVICE_IMAGE_ENABLED=False
 
+disable_service n-net
+enable_service neutron
+enable_service q-svc
+enable_service q-agt
+enable_service q-dhcp
+enable_service q-l3
+enable_service q-meta
+
 # Enable Manila
 enable_plugin manila https://github.com/openstack/manila
 
@@ -146,10 +154,6 @@ exit_handler $RETVAL#g' safe-devstack-vm-gate-wrap.sh
 sed -i 's#    local cache_dir=$BASE/cache/files/#    local cache_dir=$BASE/cache/files/\
     sudo mkdir -p $cache_dir\
     sudo chown -R $USER:$USER $cache_dir#g' devstack-gate/functions.sh
-
-# clear log if exist previous job's log
-sudo rm -rf /opt/stack/logs/*
-sudo rm -rf /var/log/apache2/*
 
 # execute jobs!
 ./safe-devstack-vm-gate-wrap.sh

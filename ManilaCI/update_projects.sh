@@ -59,14 +59,16 @@ for i in ${array[@]}; do
 done
 
 function check_connection {
-
-    ping -c1 -w1 $1 > /dev/null
-    if [ $? -ne 0 ]; then
+    until ping -q -w1 -c1 $1 > /dev/null
+    do
         echo "ERROR: Infortrend NAS port $1 DOWN"
-        sleep 600 # wait raid read
-        exit 1
-    fi
+        sleep 100 # wait
+    done
 }
+
+# Clear log first in case of the connection fail and the post task copies the wrong log.
+sudo rm -rf /opt/stack/logs/*
+sudo rm -rf /var/log/apache2/*
 
 echo "Check Connections..."
 check_connection 11.11.11.11
