@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export ZUUL_BRANCH=${ZUUL_BRANCH:-master}
+
 if [[ ! -e devstack-gate ]]; then
     git clone https://git.openstack.org/openstack-infra/devstack-gate
 else
@@ -10,9 +12,9 @@ else
     git clean -x -f
     git merge -X theirs
     export current_b=$(git rev-parse --abbrev-ref HEAD)
-    if [[ "${current_b}" != "master" ]]; then
-        git checkout master
-        git reset --hard remotes/origin/master
+    if [[ "${current_b}" != "$ZUUL_BRANCH" ]]; then
+        git checkout $ZUUL_BRANCH
+        git reset --hard $ZUUL_BRANCH
         git clean -x -f
         git merge -X theirs
     fi
@@ -37,7 +39,7 @@ openstack/tripleo-incubator openstack/zaqar'
 for i in ${array[@]}; do
 
     export j=$(echo ${i} | awk 'BEGIN {FS="/"}; {print $2}')
-    echo "Processing ${j}..."
+    echo "+ Updating ${j}..."
 
     if [ ! -d ${BASE}/${j} ]; then
         cd ${BASE}
@@ -49,9 +51,9 @@ for i in ${array[@]}; do
         git clean -x -f
         git merge -X theirs
         export current_b=$(git rev-parse --abbrev-ref HEAD)
-        if [[ "${current_b}" != "master" ]]; then
-          git checkout master
-          git reset --hard remotes/origin/master
+        if [[ "${current_b}" != "$ZUUL_BRANCH" ]]; then
+          git checkout $ZUUL_BRANCH
+          git reset --hard $ZUUL_BRANCH
           git clean -x -f
           git merge -X theirs
         fi
@@ -62,7 +64,8 @@ function check_connection {
     until ping -q -w1 -c1 $1 > /dev/null
     do
         echo "ERROR: Infortrend NAS port $1 DOWN"
-        sleep 100 # wait
+        sleep 100   # Wait for fix. Make sure to set `Timeout minutes`
+                    # in `Time-out strategy` to about 180 for manilaCI to fail/abort the job.
     done
 }
 
@@ -70,7 +73,7 @@ function check_connection {
 sudo rm -rf /opt/stack/logs/*
 sudo rm -rf /var/log/apache2/*
 
-echo "Check Connections..."
+echo "Checking Connections..."
 check_connection 11.11.11.11
 check_connection 11.11.11.13
 check_connection 172.27.114.66

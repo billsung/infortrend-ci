@@ -18,12 +18,8 @@ export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=manila_tempest_tests.tests.api)(?!.*admi
 export OVERRIDE_ENABLED_SERVICES=dstat,g-api,g-reg,horizon,key,mysql,n-api,n-cauth,n-cond,n-cpu,n-novnc,n-obj,n-sch,peakmem_tracker,placement-api,q-agt,q-dhcp,q-l3,q-meta,q-metering,q-svc,rabbit,tempest
 export PROJECTS="openstack/python-manilaclient $PROJECTS"
 
-if [ -z "$ZUUL_PROJECT" ]; then
-    export ZUUL_PROJECT=openstack/manila
-fi
-if [ -z "$ZUUL_BRANCH" ]; then
-    export ZUUL_BRANCH=master
-fi
+export ZUUL_PROJECT=${ZUUL_PROJECT:-openstack/manila}
+export ZUUL_BRANCH=${ZUUL_BRANCH:-master}
 
 export 'DEVSTACK_LOCAL_CONFIG=[[local|localrc]]
 # DEST=/opt/stack/new
@@ -116,7 +112,8 @@ class InfortrendNASException(ShareBackendException):
     if [ -n "$ZUUL_REF" ]; then
         temp_dir=$PWD
         cd $BASE/new/manila/
-        sudo git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF -X theirs
+        git commit -am "Temporary commit"
+        git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF -X theirs
         cd $temp_dir
     fi
 
