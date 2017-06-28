@@ -5,7 +5,7 @@
 export CINDER_CLONE_DRIVER=0
 export CINDER_REPO=https://github.com/infortrend-openstack/infortrend-cinder-driver.git
 export CINDER_DRIVER_BRANCH=master
-export CINDER_DRIVER_DIR=/home/jenkins/eonstor-ds-cinder-driver
+export CINDER_DRIVER_DIR=/home/jenkins/infortrend-cinder-driver
 export IFT_RAID_BACKEND_NAME=infortrenddriver-1
 export IFT_RAID_POOLS_NAME=LV-1
 export IFT_RAID_LOG_IN=infortrend
@@ -18,11 +18,26 @@ export IFT_CLI_TIMEOUT=60
 export VOLUME_SCAN_RETRIES=15
 export TEMPEST_NOVA_BUILD_TIMEOUT=1200
 export DEVSTACK_BUILD_TIMEOUT=21600000 #360*60*1000(ms)
-export DEVSTACK_LOG_FILE_PATH=/opt/stack/logs/*
-export APACHE_LOG_PATH=/var/log/apache2
-export RESET_SCRIPT_EXECUTE=0
-export RESET_SCRIPT_DIR=/home/ift/Documents/reset_script
 export IFT_CLI_CACHE=True
+
+# setup TEMPEST environment variables
+export PYTHONUNBUFFERED=true
+#export DEVSTACK_GATE_TIMEOUT=180 ---2016/2/5 change to BUILD_TIMEOUT in milliseconds
+export BUILD_TIMEOUT=$DEVSTACK_BUILD_TIMEOUT
+export DEVSTACK_GATE_TEMPEST=1
+
+export DEVSTACK_GATE_TEMPEST_REGEX="volume"
+
+#20160923 skip all tempest scenario tests
+export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=.*volume*)(?!tempest.scenario.*)'
+#export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=.*volume*)(?!tempest.scenario.*)(?!.*test_volume_crud_with_volume_type_and_extra_specs)'
+
+export TEMPEST_CONCURRENCY=1
+
+export GIT_BASE=${GIT_BASE:-https://git.openstack.org}
+
+export ZUUL_PROJECT=${ZUUL_PROJECT:-openstack/cinder}
+export ZUUL_BRANCH=${ZUUL_BRANCH:-master}
 
 # workaround 20151207: could not determine a suitable URL for the plugin
 if [ -f /etc/openstack/clouds.yaml ]; then
@@ -32,33 +47,26 @@ if [ -f /opt/stack/new/.config/openstack/clouds.yaml ]; then
     sudo rm /opt/stack/new/.config/openstack/clouds.yaml
 fi
 
-# install infortrend driver to cinder project, copy to workspace later
-if [[ "$CINDER_CLONE_DRIVER" -eq "1" ]]; then
-    rm -rf $CINDER_DRIVER_DIR
-    git clone $CINDER_REPO $CINDER_DRIVER_DIR -b $CINDER_DRIVER_BRANCH
-    if [ ! -d "$CINDER_DRIVER_DIR" ]; then
-        echo "Not find infortrend driver"
-        exit 0
-    fi
-fi
-
 # setup pre_test_hook (It will pre hook before setup openstack environment)
 function pre_test_hook {
-    echo "Install infortrend driver libraries" 
-    # If CINDER_CLONE_DRIVER set to 1, overwrite our driver!
+
+    # install infortrend driver to cinder project, copy to workspace later
     if [[ "$CINDER_CLONE_DRIVER" -eq "1" ]]; then
+        rm -rf $CINDER_DRIVER_DIR
+        git clone $CINDER_REPO $CINDER_DRIVER_DIR -b $CINDER_DRIVER_BRANCH
         rm -rf $BASE/new/cinder/cinder/volume/drivers/infortrend
         mkdir -p $BASE/new/cinder/cinder/volume/drivers/infortrend
         cp $CINDER_DRIVER_DIR/infortrend/* $BASE/new/cinder/cinder/volume/drivers/infortrend -r
     fi
 
-    #20170123 pull the Gerrit changes from zuul-merger
+    # Pull the Gerrit changes from zuul-merger
     if [ -n "$ZUUL_REF" ]; then
         temp_dir=$PWD
-        cd $BASE/new/cinder/
-        sudo git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF
+        cd ${BASE}/new/cinder/
+        git commit -am "Temporary commit"
+        git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF -X theirs
         cd $temp_dir
-    fi    
+    fi
 
     echo "Configure the local.conf file to properly setup Infortrend driver in cinder.conf"
     cat <<EOF >$BASE/new/devstack/local.conf
@@ -140,19 +148,6 @@ backup=false
 #volume_services = false
 EOF
 
-#    echo "Configure localrc file to properly setup CINDER_ENABLED_BACKENDS"
-#    cat <<EOF >>$BASE/new/devstack/localrc
-#CINDER_ENABLED_BACKENDS=$IFT_RAID_BACKEND_NAME
-#EOF
-
-#Workaround for 2016/05/25 --- Merge "functions-common: Use `systemctl` when applicable"
-#sudo sed -i 's#if [ -x /bin/systemctl ];#if is_ubuntu;#g' $BASE/new/devstack/functions-common
-#sudo sed -i 's#/bin/systemctl restart $1#/usr/sbin/service $1 restart#g' $BASE/new/devstack/functions-common
-#sudo sed -i 's#sudo service $1 restart#sudo /sbin/service $1 restart#g' $BASE/new/devstack/functions-common
-
-# set FORCE=yes to prevent not support DISTRO 
-#sudo sed -i 's/vivid|/vivid|wily|/g' $BASE/new/devstack/stack.sh
-
 }
 
 export -f pre_test_hook
@@ -160,62 +155,21 @@ export -f pre_test_hook
 # To keep our CINDER_ENABLED_BACKENDS configuration in localrc
 export KEEP_LOCALRC=true
 
-# setup TEMPEST environment variables
-export PYTHONUNBUFFERED=true          
-#export DEVSTACK_GATE_TIMEOUT=180 ---2016/2/5 change to BUILD_TIMEOUT in milliseconds
-export BUILD_TIMEOUT=$DEVSTACK_BUILD_TIMEOUT
-export DEVSTACK_GATE_TEMPEST=1
-
-export DEVSTACK_GATE_TEMPEST_REGEX="volume"
-#20170118 skip test_unmanage_manage_snapshot
-#export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=.*volume)(?!.*test_unmanage_manage_snapshot)'
-
-#20160923 skip all tempest scenario tests
-export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=.*volume*)(?!tempest.scenario.*)'
-#export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=.*volume*)(?!tempest.scenario.*)(?!.*test_volume_crud_with_volume_type_and_extra_specs)'
-
-# set tempest concurrency to ?
-export TEMPEST_CONCURRENCY=1
-
-# Let's use the http protocol instead of git protocol
-#export GIT_BASE="https://review.openstack.org/p"
-export GIT_BASE=${GIT_BASE:-https://git.openstack.org}
-
-if [ -z "$ZUUL_PROJECT" ]; then
-    export ZUUL_PROJECT=openstack/cinder
-fi
-if [ -z "$ZUUL_BRANCH" ]; then
-    export ZUUL_BRANCH=master
-fi
-
 cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
 
 # in safe-devstack-vm-gate-wrap, move logs to jenkins workspace
 sed -i 's#exit_handler $RETVAL# \
 sudo mv $BASE/logs/* $WORKSPACE/logs \
-if [[ "$RESET_SCRIPT_EXECUTE" -eq "1" ]]; then \
-    sudo python $RESET_SCRIPT_DIR/reset.py \
-    java -jar $RESET_SCRIPT_DIR/raidcmd_ESDS10.jar $IFT_RAID_IP reset controller -y \
-fi \
-sudo rm -rf $BASE/new/* \
 exit_handler $RETVAL#g' safe-devstack-vm-gate-wrap.sh
 
 #2017/04/05 fix bug for functions.sh line:521
 sed -i 's#    local cache_dir=$BASE/cache/files/#    local cache_dir=$BASE/cache/files/\
     sudo mkdir -p $cache_dir\
     sudo chown -R $USER:$USER $cache_dir#g' devstack-gate/functions.sh
-    
+
 #2017/06/07 Bill:Prevent Generating ARA report
 sed -i 's#/tmp/ansible/bin/ara generate html $WORKSPACE/logs/ara##g' safe-devstack-vm-gate-wrap.sh
 sed -i 's#gzip --recursive --best $WORKSPACE/logs/ara##g' safe-devstack-vm-gate-wrap.sh
-
-# clear log if exist previous job's log
-sudo rm -rf $DEVSTACK_LOG_FILE_PATH 
-sudo rm -rf $APACHE_LOG_PATH/*
-# Bill:remove old logs.
-rm -rf /var/log/libvirt/*
-rm -rf /var/log/openvswitch/*
-rm -rf /var/log/rabbitmq/*
 
 # execute jobs!
 ./safe-devstack-vm-gate-wrap.sh

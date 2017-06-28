@@ -92,7 +92,6 @@ function pre_test_hook {
         rm -rf ${BASE}/new/manila/manila/share/drivers/infortrend
         mkdir ${BASE}/new/manila/manila/share/drivers/infortrend
         cp ${MANILA_DRIVER_DIR}/infortrend/* ${BASE}/new/manila/manila/share/drivers/infortrend/
-        cd ${BASE}/new/manila
     fi
     echo "Adding Infortrend opts and exceptions.."
     sed -i '71 iimport manila.share.drivers.infortrend.driver' ${BASE}/new/manila/manila/opts.py
@@ -111,7 +110,7 @@ class InfortrendNASException(ShareBackendException):
 
     if [ -n "$ZUUL_REF" ]; then
         temp_dir=$PWD
-        cd $BASE/new/manila/
+        cd ${BASE}/new/manila/
         git commit -am "Temporary commit"
         git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF -X theirs
         cd $temp_dir
