@@ -31,10 +31,13 @@ openstack/neutron openstack/neutron-fwaas openstack/neutron-lbaas
 openstack/neutron-vpnaas openstack/nova openstack/octavia
 openstack/os-apply-config openstack/os-brick openstack/osc-lib
 openstack/os-client-config openstack/os-collect-config openstack/os-net-config
-openstack/os-refresh-config openstack/python-manilaclient
-openstack/requirements openstack/swift openstack/tempest openstack/tempest-lib
-openstack/tripleo-heat-templates openstack/tripleo-image-elements
-openstack/tripleo-incubator openstack/zaqar'
+openstack/os-refresh-config openstack/requirements openstack/swift
+openstack/tempest openstack/tempest-lib openstack/tripleo-heat-templates
+openstack/tripleo-image-elements openstack/tripleo-incubator openstack/zaqar'
+
+if [ ! -d ${BASE} ]; then
+	mkdir ${BASE}
+fi
 
 for i in ${array[@]}; do
 
@@ -65,7 +68,6 @@ function check_connection {
     do
         echo "ERROR: Infortrend NAS port $1 DOWN"
         sleep 100   # Wait for fix. Make sure to set `Timeout minutes`
-                    # in `Time-out strategy` to about 180 for manilaCI to fail/abort the job.
     done
 }
 
@@ -77,9 +79,7 @@ rm -rf /var/log/openvswitch/*
 rm -rf /var/log/rabbitmq/*
 
 echo "Checking Connections..."
-check_connection 11.11.11.11
-check_connection 11.11.11.13
-check_connection 172.27.114.66
+check_connection 10.10.10.200
 
 rm -rf /opt/stack/new/*
 cp -r /home/ift/ci_projects/* /opt/stack/new/
