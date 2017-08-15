@@ -6,8 +6,11 @@ export MANILA_REPO=https://github.com/infortrend-openstack/infortrend-manila-dri
 export MANILA_DRIVER_DIR=/home/jenkins/infortrend-manila-driver
 export MANILA_REPO_BRANCH=master
 
+export ZUUL_PROJECT=${ZUUL_PROJECT:-openstack/manila}
+export ZUUL_BRANCH=${ZUUL_BRANCH:-master}
+
 export GIT_BASE=${GIT_BASE:-https://git.openstack.org}
-export GIT_BRANCH=${GIT_BRANCH:-master}
+export GIT_BRANCH=${GIT_BRANCH:-${ZUUL_BRANCH}}
 export PYTHONUNBUFFERED=true
 export BUILD_TIMEOUT=10800000
 
@@ -17,9 +20,6 @@ export 'DEVSTACK_GATE_TEMPEST_REGEX=^(?=manila_tempest_tests.tests.api)(?!.*admi
 
 export OVERRIDE_ENABLED_SERVICES=dstat,g-api,g-reg,horizon,key,mysql,n-api,n-cauth,n-cond,n-cpu,n-novnc,n-obj,n-sch,peakmem_tracker,placement-api,q-agt,q-dhcp,q-l3,q-meta,q-metering,q-svc,rabbit,tempest
 export PROJECTS="openstack/python-manilaclient $PROJECTS"
-
-export ZUUL_PROJECT=${ZUUL_PROJECT:-openstack/manila}
-export ZUUL_BRANCH=${ZUUL_BRANCH:-master}
 
 export 'DEVSTACK_LOCAL_CONFIG=[[local|localrc]]
 # DEST=/opt/stack/new
@@ -92,6 +92,7 @@ function pre_test_hook {
         rm -rf ${BASE}/new/manila/manila/share/drivers/infortrend
         mkdir ${BASE}/new/manila/manila/share/drivers/infortrend
         cp ${MANILA_DRIVER_DIR}/infortrend/* ${BASE}/new/manila/manila/share/drivers/infortrend/
+        cd ${BASE}/new/manila
     fi
     echo "Adding Infortrend opts and exceptions.."
     sed -i '71 iimport manila.share.drivers.infortrend.driver' ${BASE}/new/manila/manila/opts.py
@@ -110,7 +111,7 @@ class InfortrendNASException(ShareBackendException):
 
     if [ -n "$ZUUL_REF" ]; then
         temp_dir=$PWD
-        cd ${BASE}/new/manila/
+        cd $BASE/new/manila/
         git commit -am "Temporary commit"
         git pull ift@master:/var/lib/zuul/git/$ZUUL_PROJECT $ZUUL_REF -X theirs
         cd $temp_dir

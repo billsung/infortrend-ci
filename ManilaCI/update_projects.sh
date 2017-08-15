@@ -1,6 +1,7 @@
 #!/bin/bash
 
 export ZUUL_BRANCH=${ZUUL_BRANCH:-master}
+echo "ZUUL_BRABCH is ${ZUUL_BRANCH}"
 
 if [[ ! -e devstack-gate ]]; then
     git clone https://git.openstack.org/openstack-infra/devstack-gate
