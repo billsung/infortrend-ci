@@ -80,7 +80,7 @@ rm -rf /var/log/rabbitmq/*
 echo "Checking Connections..."
 check_connection 11.11.11.11
 check_connection 11.11.11.13
-check_connection 172.27.114.66
+check_connection 172.27.119.158
 
 rm -rf /opt/stack/new/*
 cp -r /home/ift/ci_projects/* /opt/stack/new/

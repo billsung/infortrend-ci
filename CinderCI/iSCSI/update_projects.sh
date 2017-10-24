@@ -36,7 +36,7 @@ openstack/tempest openstack/tempest-lib openstack/tripleo-heat-templates
 openstack/tripleo-image-elements openstack/tripleo-incubator openstack/zaqar'
 
 if [ ! -d ${BASE} ]; then
-	mkdir ${BASE}
+    mkdir ${BASE}
 fi
 
 for i in ${array[@]}; do
@@ -52,13 +52,13 @@ for i in ${array[@]}; do
         git remote update
         git reset --hard
         git clean -x -f
-        git merge -X theirs
+        git pull
         export current_b=$(git rev-parse --abbrev-ref HEAD)
         if [[ "${current_b}" != "$ZUUL_BRANCH" ]]; then
           git checkout $ZUUL_BRANCH
           git reset --hard $ZUUL_BRANCH
           git clean -x -f
-          git merge -X theirs
+          git pull
         fi
     fi
 done

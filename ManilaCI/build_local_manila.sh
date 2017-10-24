@@ -11,7 +11,7 @@ else
     git remote update
     git reset --hard
     git clean -x -f
-    git merge -X theirs
+    git pull
 fi
 
 rm -rf ${MANILA_BASE}/manila/share/drivers/infortrend
